@@ -127,12 +127,52 @@ async function run() {
       }
     });
 
+
+
+    app.get("/customers/:customerID", async (req, res) => {
+  try {
+    const customerID = Number(req.params.customerID);
+    const customer = await db.collection("customers").findOne({ customerID: customerID });
+    if (!customer) return res.status(404).json({ message: "Customer not found" });
+    res.json(customer);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});    
     // Orders
     app.post("/orders", async (req, res) => {
       const result = await ordersCollection.insertOne(req.body);
       res.send(result);
     });
 
+    app.get("/orders/customer/:customerID", async (req, res) => {
+  try {
+    const customerID = Number(req.params.customerID);
+    const customerOrders = await db
+      .collection("orders")
+      .find({ customerID: customerID })
+      .toArray();
+
+    res.json(customerOrders);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
+app.get("/products/:productID", async (req, res) => {
+  const productID = Number(req.params.productID);
+  try {
+    const product = await productsCollection.findOne({ productID: productID });
+    if (!product) return res.status(404).json({ message: "Product not found" });
+    res.json(product);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
     // Notifications
     app.get("/notifications", async (req, res) => {
       try {
@@ -147,7 +187,7 @@ async function run() {
     // ------------------- CRON JOB -------------------
     // For testing: run every minute. Change to '0 0 * * *' for daily at midnight.
     cron.schedule(
-      "*/3 * * * *",
+      "0 0 * * *",
       async () => {
         try {
           const today = todayInBangladesh();
