@@ -6,6 +6,8 @@ const dotenv = require("dotenv");
 const cookie = require("cookie-parser");
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const cron = require("node-cron");
+const cookieParser = require("cookie-parser");
+const jwt = require("jsonwebtoken")
 
 dotenv.config();
 
@@ -13,8 +15,13 @@ dotenv.config();
 const port = process.env.PORT || 3000;
 
 // Middlewares
-app.use(cors());
-app.use(cookie());
+app.use(
+  cors({
+    origin: "http://localhost:5173",  // your frontend URL (no slash!)
+    credentials: true,                // allow cookies (important for JWT in cookies)
+  })
+);
+app.use(cookieParser());
 app.use(express.json());
 
 // Mongo URI
@@ -67,6 +74,33 @@ function normalizeFutureDate(value) {
   return String(value).trim().split("T")[0].split(" ")[0];
 }
 
+
+const verifyToken = (req,res,next) =>{
+  console.log("cookie", req.cookies);
+  const token = req?.cookies?.token;
+
+  if(!token){
+    return res.status(401).send({message : "unauthorized access"})
+  }
+
+jwt.verify(token , process.env.JWT_SECRET , (err , decoded) =>{
+  if(err){
+    return res.status(401).send({message : "unauthorized access"})
+  }
+
+  req.decoded = decoded;
+  console.log(decoded)
+  next()
+})
+
+}
+
+
+
+
+
+
+
 async function run() {
   try {
     // Connect to MongoDB first
@@ -75,13 +109,41 @@ async function run() {
 
     const usersCollection = db.collection("users");
     const ordersCollection = db.collection("orders");
-    const productsCollection = db.collection("products");
+    const productsCollection = db.collection("products");            
     const customerCollection = db.collection("customers");
     const notificationsCollection = db.collection("notifications");
 
     console.log("MongoDB connected successfully!");
 
+
+// ----------------------JWT API-----------------
+ 
+
+app.post("/jwt" , async(req,res) =>{
+  const userInfo = req.body ;
+  const token = jwt.sign(userInfo , process.env.JWT_SECRET ,{
+   expiresIn : process.env.JWT_EXPIRE 
+  })
+
+  res.cookie("token", token,{
+    httpOnly : false,
+    secure : false,
+    sameSite : "lax"
+  })
+
+  res.send({success : true})
+})
+
+
+
+
+
+
     // ------------------- API ROUTES -------------------
+
+
+
+
 
     // Users
     app.get("/users", async (req, res) => {
@@ -94,25 +156,25 @@ async function run() {
     });
 
     // Products
-    app.get("/products", async (req, res) => {
+    app.get("/products",verifyToken, async (req, res) => {
       const result = await productsCollection.find().toArray();
       res.send(result);
     });
-    app.post("/products", async (req, res) => {
+    app.post("/products", verifyToken, async (req, res) => {
       const result = await productsCollection.insertOne(req.body);
       res.send(result);
     });
 
     // Customers
-    app.get("/customers", async (req, res) => {
+    app.get("/customers",verifyToken, async (req, res) => {
       const result = await customerCollection.find().toArray();
       res.send(result);
     });
-    app.post("/customers", async (req, res) => {
+    app.post("/customers",verifyToken, async (req, res) => {
       const result = await customerCollection.insertOne(req.body);
       res.send(result);
     });
-    app.put("/customers/lastOrder/:customerID", async (req, res) => {
+    app.put("/customers/lastOrder/:customerID",verifyToken, async (req, res) => {
       const customerID = parseInt(req.params.customerID);
       const { lastOrder } = req.body;
       try {
@@ -129,7 +191,7 @@ async function run() {
 
 
 
-    app.get("/customers/:customerID", async (req, res) => {
+    app.get("/customers/:customerID",verifyToken, async (req, res) => {
   try {
     const customerID = Number(req.params.customerID);
     const customer = await db.collection("customers").findOne({ customerID: customerID });
@@ -141,12 +203,12 @@ async function run() {
   }
 });    
     // Orders
-    app.post("/orders", async (req, res) => {
+    app.post("/orders",verifyToken, async (req, res) => {
       const result = await ordersCollection.insertOne(req.body);
       res.send(result);
     });
 
-    app.get("/orders/customer/:customerID", async (req, res) => {
+    app.get("/orders/customer/:customerID",verifyToken, async (req, res) => {
   try {
     const customerID = Number(req.params.customerID);
     const customerOrders = await db
@@ -162,7 +224,7 @@ async function run() {
 });
 
 
-app.get("/products/:productID", async (req, res) => {
+app.get("/products/:productID",verifyToken, async (req, res) => {
   const productID = Number(req.params.productID);
   try {
     const product = await productsCollection.findOne({ productID: productID });
@@ -174,7 +236,7 @@ app.get("/products/:productID", async (req, res) => {
   }
 });
     // Notifications
-    app.get("/notifications", async (req, res) => {
+    app.get("/notifications",verifyToken, async (req, res) => {
       try {
         const notifications = await notificationsCollection.find().toArray();
         res.send(notifications);
