@@ -3,7 +3,6 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 const dotenv = require("dotenv");
-const cookie = require("cookie-parser");
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const cron = require("node-cron");
 const cookieParser = require("cookie-parser");
@@ -95,7 +94,17 @@ jwt.verify(token , process.env.JWT_SECRET , (err , decoded) =>{
 
 }
 
-
+const verifyRole = (requiredRole)=> {
+  return (req, res, next) => {
+  if (!req.decoded) {
+  return res.status(401).send("Unauthorized");
+}
+if (req.decoded.role !== requiredRole) {
+  return res.status(403).send("Forbidden - You don't have permission");
+}
+    next();
+  };
+}
 
 
 
@@ -115,18 +124,27 @@ async function run() {
 
     console.log("MongoDB connected successfully!");
 
-
 // ----------------------JWT API-----------------
  
-
 app.post("/jwt" , async(req,res) =>{
-  const userInfo = req.body ;
-  const token = jwt.sign(userInfo , process.env.JWT_SECRET ,{
-   expiresIn : process.env.JWT_EXPIRE 
-  })
+   const { email } = req.body;
+
+  // find user from DB
+  const user = await client.db("rice_agency").collection("users").findOne({ email });
+
+  if (!user) {
+    return res.status(404).send({ message: "User not found" });
+  }
+
+  // sign token with email + role
+  const token = jwt.sign(
+    { email: user.email, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRE }
+  );
 
   res.cookie("token", token,{
-    httpOnly : false,
+    httpOnly : true,
     secure : false,
     sameSite : "lax"
   })
@@ -134,19 +152,10 @@ app.post("/jwt" , async(req,res) =>{
   res.send({success : true})
 })
 
-
-
-
-
-
     // ------------------- API ROUTES -------------------
 
-
-
-
-
     // Users
-    app.get("/users", async (req, res) => {
+    app.get("/users/all",verifyToken , verifyRole("admin"), async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result);
     });
@@ -155,26 +164,35 @@ app.post("/jwt" , async(req,res) =>{
       res.send(result);
     });
 
+
+app.get("/users", verifyToken, async (req, res) => {
+  const email = req.query.email;
+  if (!email) return res.status(400).send({ message: "Email query required" });
+
+  const result = await usersCollection.findOne({ email });
+  res.send(result);
+});
+
     // Products
     app.get("/products",verifyToken, async (req, res) => {
       const result = await productsCollection.find().toArray();
       res.send(result);
     });
-    app.post("/products", verifyToken, async (req, res) => {
+    app.post("/products", verifyToken, verifyRole("admin"), async (req, res) => {
       const result = await productsCollection.insertOne(req.body);
       res.send(result);
     });
 
     // Customers
-    app.get("/customers",verifyToken, async (req, res) => {
+    app.get("/customers",verifyToken, verifyRole("admin"), async (req, res) => {
       const result = await customerCollection.find().toArray();
       res.send(result);
     });
-    app.post("/customers",verifyToken, async (req, res) => {
+    app.post("/customers",verifyToken, verifyRole("admin"), async (req, res) => {
       const result = await customerCollection.insertOne(req.body);
       res.send(result);
     });
-    app.put("/customers/lastOrder/:customerID",verifyToken, async (req, res) => {
+    app.put("/customers/lastOrder/:customerID",verifyToken , verifyRole("admin"), async (req, res) => {
       const customerID = parseInt(req.params.customerID);
       const { lastOrder } = req.body;
       try {
@@ -191,7 +209,7 @@ app.post("/jwt" , async(req,res) =>{
 
 
 
-    app.get("/customers/:customerID",verifyToken, async (req, res) => {
+    app.get("/customers/:customerID",verifyToken, verifyRole("admin"), async (req, res) => {
   try {
     const customerID = Number(req.params.customerID);
     const customer = await db.collection("customers").findOne({ customerID: customerID });
@@ -203,12 +221,16 @@ app.post("/jwt" , async(req,res) =>{
   }
 });    
     // Orders
-    app.post("/orders",verifyToken, async (req, res) => {
+    app.post("/orders",verifyToken, verifyRole("admin"), async (req, res) => {
       const result = await ordersCollection.insertOne(req.body);
       res.send(result);
     });
+    app.get("/orders",verifyToken, verifyRole("admin"), async (req, res) => {
+      const result = await ordersCollection.find().toArray();
+      res.send(result);
+    });
 
-    app.get("/orders/customer/:customerID",verifyToken, async (req, res) => {
+    app.get("/orders/customer/:customerID",verifyToken,verifyRole("admin"), async (req, res) => {
   try {
     const customerID = Number(req.params.customerID);
     const customerOrders = await db
@@ -236,7 +258,7 @@ app.get("/products/:productID",verifyToken, async (req, res) => {
   }
 });
     // Notifications
-    app.get("/notifications",verifyToken, async (req, res) => {
+    app.get("/notifications",verifyToken,verifyRole("admin"), async (req, res) => {
       try {
         const notifications = await notificationsCollection.find().toArray();
         res.send(notifications);
