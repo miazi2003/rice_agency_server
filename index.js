@@ -16,7 +16,7 @@ const port = process.env.PORT || 3000;
 // Middlewares
 app.use(
   cors({
-    origin: "http://localhost:5173",  // your frontend URL (no slash!)
+    origin: "https://lucky-lily-5defea.netlify.app",  // your frontend URL (no slash!)
     credentials: true,                // allow cookies (important for JWT in cookies)
   })
 );
