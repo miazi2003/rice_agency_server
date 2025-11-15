@@ -14,12 +14,16 @@ dotenv.config();
 const port = process.env.PORT || 3000;
 
 // Middlewares
-app.use(
-  cors({
-    origin: ["https://lucky-lily-5defea.netlify.app" , "http://localhost:5173"],  // your frontend URL (no slash!)
-    credentials: true,                // allow cookies (important for JWT in cookies)
-  })
-);
+app.use(cors({
+  origin: [
+    "https://lucky-lily-5defea.netlify.app",
+    "http://localhost:5173"
+  ],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // ✅ add this
+  allowedHeaders: ["Content-Type", "Authorization"],    // ✅ add this
+}));
+
 app.use(cookieParser());
 app.use(express.json());
 
