@@ -128,7 +128,9 @@ mongoose
 // ----------------------JWT API-----------------
 app.post("/jwt", async (req, res) => {
   const { email } = req.body;
+  console.log(email, "cookked")
   const user = await User.findOne({ email });
+  console.log(user)
   if (!user) {
     return res.status(404).send({ message: "User not found" });
   }
