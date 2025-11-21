@@ -304,78 +304,73 @@ cron.schedule(
   async () => {
     try {
       const today = todayInBangladesh();
-      console.log(`[CRON] Checking orders for BD date: ${today} (Asia/Dhaka)`);
+      console.log(`\n🚀 [CRON] Running for BD date: ${today}`);
 
-      const orders = await Order.find({ futureOrderDate: { $exists: true } });
-      console.log(`[CRON] Total orders found with futureOrderDate: ${orders.length}`);
+      // 🔥 STEP 1: FIND ONLY TODAY’S ORDERS (Fast query)
+      const orders = await Order.find({
+        futureOrderDate: today
+      });
 
-      const notificationsToInsert = [];
+      console.log(`📌 Found ${orders.length} orders for today.`);
 
+      if (orders.length === 0) {
+        console.log("⛔ No orders match today's date.");
+        return;
+      }
+
+      let notificationsToInsert = [];
+
+      // 🔥 STEP 2: LOOP THROUGH EACH ORDER
       for (const order of orders) {
-        const normalized = normalizeFutureDate(order.futureOrderDate);
+        console.log(`\n📝 Processing Order ID: ${order._id}`);
 
-        console.log(
-          `[CRON] ORDER CHECK:
-            - Order ID: ${order._id}
-            - Raw futureOrderDate: ${order.futureOrderDate}
-            - Normalized: ${normalized}
-            - Today: ${today}
-          `
-        );
-
-        if (normalized !== today) {
-          console.log(`[CRON] SKIPPED — Date mismatch for order ${order._id}`);
-          continue;
-        }
-
-        console.log(`[CRON] MATCH — Processing products for order ${order._id}`);
-
-        // 🔥 LOOP THROUGH ORDER PRODUCTS (THE REAL FIX)
+        // 🔥 STEP 3: LOOP THROUGH EACH PRODUCT
         for (const product of order.products || []) {
           console.log(
-            `[CRON] Product Check:
-              productId = ${product.productId}
-              productName = ${product.productName}
-            `
+            `➡ Product: ${product.productName} (${product.productId})`
           );
 
+          // Check duplicate
           const exists = await Notification.findOne({
             customerID: order.customerID,
             date: today,
-            productName: product.productName,
+            productName: product.productName
           });
 
           if (exists) {
-            console.log(
-              `[CRON] Duplicate found for customer ${order.customerID}, product ${product.productName}`
-            );
+            console.log(`❌ Duplicate found, skipping...`);
             continue;
           }
 
+          // Prepare notification
           notificationsToInsert.push({
             customerID: order.customerID,
             customerName: order.customerName,
-            productName: product.productName,   // 🔥 NOW THIS WILL WORK
+            productName: product.productName,
             message: `${order.customerName} want ${product.productName} this month`,
             date: today,
-            createdAt: new Date(),
+            createdAt: new Date()
           });
 
-          console.log(`[CRON] → Added notification for product ${product.productName}`);
+          console.log(`✅ Queued notification for: ${product.productName}`);
         }
       }
 
+      // 🔥 STEP 4: BULK INSERT
       if (notificationsToInsert.length > 0) {
         await Notification.insertMany(notificationsToInsert);
         console.log(
-          `[CRON] INSERTED ${notificationsToInsert.length} new notifications`,
+          `🎉 Inserted ${notificationsToInsert.length} notifications.`,
           notificationsToInsert
         );
       } else {
-        console.log("[CRON] No new notifications to insert.");
+        console.log("ℹ No new notifications to insert.");
       }
+
+      console.log("🚀 [CRON END]\n");
+
     } catch (err) {
-      console.error("[CRON] Error:", err);
+      console.error("❌ [CRON ERROR]:", err);
     }
   },
   { timezone: "Asia/Dhaka" }
