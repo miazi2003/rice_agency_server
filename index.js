@@ -173,10 +173,24 @@ app.get("/products", verifyToken, async (req, res) => {
   res.send(result);
 });
 app.post("/products", verifyToken, verifyRole("admin"), async (req, res) => {
-  const product = new Product(req.body);
-  const result = await product.save();
-  res.send(result);
+  try {
+    const lastProduct = await Product.findOne().sort({ productID: -1 });
+    const newID = lastProduct ? lastProduct.productID + 1 : 1;
+
+    const newProduct = new Product({
+      productID: newID,
+      ...req.body,
+    });
+
+    const result = await newProduct.save();
+
+    res.send(result);
+  } catch (err) {
+    console.error("Error:", err);
+    res.status(500).send({ message: "Failed to add product" });
+  }
 });
+
 
 // Customers
 app.get("/customers", verifyToken, verifyRole("admin"), async (req, res) => {
