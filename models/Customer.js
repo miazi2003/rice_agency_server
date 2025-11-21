@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const customerSchema = new mongoose.Schema({
   customerID: { type: Number, required: true, unique: true },
-  customerName: { type: String },          // তুমি frontend-এ name ব্যবহার করছ
+  name: { type: String },          // তুমি frontend-এ name ব্যবহার করছ
   address: { type: String },
   phone: { type: String },
   joinDate: { type: String },
