@@ -300,7 +300,7 @@ app.get(
 );
 
 cron.schedule(
-  "* * * * * *",
+  "0 0 * * *",
   async () => {
     try {
       const today = todayInBangladesh();
