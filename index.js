@@ -207,7 +207,7 @@ app.put("/customers/lastOrder/:customerID", verifyToken, verifyRole("admin"), as
     const { customerID } = req.params;
     const { lastOrder } = req.body;
 
-    const updated = await Customers.findOneAndUpdate(
+    const updated = await Customer.findOneAndUpdate(
       { customerID: parseInt(customerID) },
       { lastOrder },
       { new: true }
