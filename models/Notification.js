@@ -6,8 +6,13 @@ const notificationSchema = new mongoose.Schema({
   productName: { type: String },
   message: { type: String },
   date: { type: String },
-  uniqueHash: { type: String, unique: true },   // 👈 Prevent duplicate notifications
   createdAt: { type: Date, default: Date.now },
 }, { timestamps: true });
+
+// 🔥 Prevent duplicate notifications (customerID + date + productName)
+notificationSchema.index(
+  { customerID: 1, date: 1, productName: 1 },
+  { unique: true }
+);
 
 module.exports = mongoose.model('notifications', notificationSchema);
