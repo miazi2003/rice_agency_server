@@ -202,26 +202,29 @@ app.post("/customers", verifyToken, verifyRole("admin"), async (req, res) => {
   const result = await customer.save();
   res.send(result);
 });
-app.put(
-  "/customers/lastOrder/:customerID",
-  verifyToken,
-  verifyRole("admin"),
-  async (req, res) => {
-    const customerID = parseInt(req.params.customerID);
+app.put("/customers/lastOrder/:customerID", verifyToken, verifyRole("admin"), async (req, res) => {
+  try {
+    const { customerID } = req.params;
     const { lastOrder } = req.body;
-    try {
-      const result = await Customer.findOneAndUpdate(
-        { customerID },
-        { $set: { lastOrder } },
-        { new: true }
-      );
-      res.send(result);
-    } catch (err) {
-      console.error(err);
-      res.status(500).send({ error: "Failed to update last order" });
+
+    const updated = await Customers.findOneAndUpdate(
+      { customerID: parseInt(customerID) },
+      { lastOrder },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).send({ message: "Customer not found" });
     }
+
+    res.send(updated);
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({ message: "Failed to update last order" });
   }
-);
+});
+
 
 app.get(
   "/customers/:customerID",
