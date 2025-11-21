@@ -301,7 +301,7 @@ app.get(
 
 // ------------------- CRON JOB -------------------
 cron.schedule(
-  "0 0 * * *",
+  "* * * * * *",
   async () => {
     try {
       const today = todayInBangladesh();
