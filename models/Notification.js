@@ -6,6 +6,7 @@ const notificationSchema = new mongoose.Schema({
   productName: { type: String },
   message: { type: String },
   date: { type: String },
+  uniqueHash: { type: String, unique: true },   // 👈 Prevent duplicate notifications
   createdAt: { type: Date, default: Date.now },
 }, { timestamps: true });
 
