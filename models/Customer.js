@@ -2,12 +2,19 @@ const mongoose = require("mongoose");
 
 const customerSchema = new mongoose.Schema({
   customerID: { type: Number, required: true, unique: true },
-  customerName: { type: String },          // তুমি frontend-এ name ব্যবহার করছ
-  address: { type: String },
+
+  customerName: { type: String },  // ← name from frontend
   phone: { type: String },
+  altPhone: { type: String },
+  whatsapp: { type: String },
+
+  houseNumber: { type: String },
+  roadNumber: { type: String },
+  blockNumber: { type: String },
+
+  address: { type: String },
   joinDate: { type: String },
 
-  // lastOrder should be an array
   lastOrder: [
     {
       productId: Number,
@@ -15,6 +22,7 @@ const customerSchema = new mongoose.Schema({
       orderDate: String,
     }
   ],
+
 }, { timestamps: true });
 
 module.exports = mongoose.model("customers", customerSchema);
