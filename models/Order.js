@@ -7,4 +7,4 @@ const orderSchema = new mongoose.Schema({
   // add other order fields as needed
 }, { timestamps: true });
 
-module.exports = mongoose.model('Order', orderSchema);
+module.exports = mongoose.model('orders', orderSchema);

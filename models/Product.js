@@ -6,4 +6,4 @@ const productSchema = new mongoose.Schema({
   // add other product fields as needed
 }, { timestamps: true });
 
-module.exports = mongoose.model('Product', productSchema);
+module.exports = mongoose.model('products', productSchema);
