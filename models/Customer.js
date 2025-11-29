@@ -1,28 +1,42 @@
 const mongoose = require("mongoose");
 
-const customerSchema = new mongoose.Schema({
-  customerID: { type: Number, required: true, unique: true },
+const customerSchema = new mongoose.Schema(
+  {
+    customerID: { type: Number, required: true, unique: true },
 
-  customerName: { type: String },  // ← name from frontend
-  phone: { type: String },
-  altPhone: { type: String },
-  whatsapp: { type: String },
+    customerName: { type: String },
+    phone: { type: String },
+    altPhone: { type: String },
+    whatsapp: { type: String },
 
-  houseNumber: { type: String },
-  roadNumber: { type: String },
-  blockNumber: { type: String },
+    houseNumber: { type: String },
+    roadNumber: { type: String },
+    blockNumber: { type: String },
 
-  address: { type: String },
-  joinDate: { type: String },
+    address: { type: String },
+    joinDate: { type: String },
 
-  lastOrder: [
-    {
-      productId: Number,
-      productName: String,
-      orderDate: String,
-    }
-  ],
+    // ADD THESE ↓↓↓
+    selectedProducts: [
+      { type: Number } // only product IDs
+    ],
 
-}, { timestamps: true });
+    recommendedProducts: [
+      {
+        productId: Number,
+        productName: String,
+      }
+    ],
+
+    lastOrder: [
+      {
+        productId: Number,
+        productName: String,
+        orderDate: String,
+      }
+    ],
+  },
+  { timestamps: true }
+);
 
 module.exports = mongoose.model("customers", customerSchema);
