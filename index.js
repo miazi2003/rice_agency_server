@@ -191,6 +191,46 @@ app.post("/products", verifyToken, verifyRole("admin"), async (req, res) => {
   }
 });
 
+app.delete("/products/:productID", verifyToken, verifyRole("admin"), async (req, res) => {
+  try {
+    const productID = Number(req.params.productID);
+    if (Number.isNaN(productID)) {
+      return res.status(400).json({ message: "Invalid productID" });
+    }
+
+    // Find and delete the product
+    const deletedProduct = await Product.findOneAndDelete({ productID: productID });
+
+    if (!deletedProduct) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    // Remove the product from all orders' products arrays
+    await Order.updateMany(
+      { "products.productId": productID },
+      { $pull: { products: { productId: productID } } }
+    );
+
+    // Remove any orders that now have empty products array
+    await Order.deleteMany({ $or: [{ products: { $exists: true, $size: 0 } }, { products: { $exists: false } }] });
+
+    // Remove notifications that reference this product name (if productName exists)
+    if (deletedProduct.productName) {
+      await Notification.deleteMany({ productName: deletedProduct.productName });
+    }
+
+    res.json({
+      success: true,
+      message: "Product deleted and related references cleaned up",
+      deletedProduct,
+    });
+  } catch (err) {
+    console.error("Error deleting product:", err);
+    res.status(500).json({ message: "Server error while deleting product" });
+  }
+});
+
+
 
 // Customers
 app.get("/customers", verifyToken, verifyRole("admin"), async (req, res) => {
@@ -244,6 +284,39 @@ app.get(
   }
 );
 
+app.delete("/customers/:customerID", verifyToken, verifyRole("admin"), async (req, res) => {
+  try {
+    const customerID = Number(req.params.customerID);
+    if (Number.isNaN(customerID)) {
+      return res.status(400).json({ message: "Invalid customerID" });
+    }
+
+    // Delete customer
+    const deletedCustomer = await Customer.findOneAndDelete({ customerID: customerID });
+
+    if (!deletedCustomer) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    // Delete orders tied to this customerID
+    const deletedOrders = await Order.deleteMany({ customerID: customerID });
+
+    // Delete notifications tied to this customerID
+    const deletedNotifications = await Notification.deleteMany({ customerID: customerID });
+
+    res.json({
+      success: true,
+      message: "Customer and related orders/notifications deleted",
+      deletedCustomer,
+      ordersRemovedCount: deletedOrders.deletedCount ?? deletedOrders, // mongoose returns an object in some versions
+      notificationsRemovedCount: deletedNotifications.deletedCount ?? deletedNotifications,
+    });
+  } catch (err) {
+    console.error("Error deleting customer:", err);
+    res.status(500).json({ message: "Server error while deleting customer" });
+  }
+});
+
 // Orders
 app.post("/orders", verifyToken, verifyRole("admin"), async (req, res) => {
   const order = new Order(req.body);
@@ -280,6 +353,41 @@ app.get("/products/:productID", verifyToken, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
+  }
+});
+
+app.delete("/orders/:orderId", verifyToken, verifyRole("admin"), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    // 1️⃣ Find the order first (so we can clean related notifications)
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    // 2️⃣ Delete the order
+    await Order.findByIdAndDelete(orderId);
+
+    // 3️⃣ Remove related notifications (best match)
+    //    matches: same customerID AND same productName
+    for (const p of order.products) {
+      await Notification.deleteMany({
+        customerID: order.customerID,
+        productName: p.productName,
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Order deleted successfully",
+      deletedOrderId: orderId,
+    });
+
+  } catch (err) {
+    console.error("Error deleting order:", err);
+    res.status(500).json({ message: "Server error while deleting order" });
   }
 });
 
