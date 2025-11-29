@@ -317,6 +317,51 @@ app.delete("/customers/:customerID", verifyToken, verifyRole("admin"), async (re
   }
 });
 
+
+// ------------------- Recommended Products API -------------------
+app.get(
+  "/products/recommended/:customerID",
+  verifyToken,
+  verifyRole("admin"),
+  async (req, res) => {
+    try {
+      const customerID = Number(req.params.customerID);
+      if (Number.isNaN(customerID)) {
+        return res.status(400).json({ message: "Invalid customerID" });
+      }
+
+      // 1️⃣ Find customer
+      const customer = await Customer.findOne({ customerID });
+      if (!customer) {
+        return res.status(404).json({ message: "Customer not found" });
+      }
+
+      // 2️⃣ Get selected product IDs from customer DB
+      const selectedIDs = customer.selectedProducts || [];
+
+      // If no recommended products exist
+      if (!selectedIDs.length) {
+        return res.json([]);
+      }
+
+      // 3️⃣ Fetch full product data
+      const products = await Product.find({ productID: { $in: selectedIDs } });
+
+      // 4️⃣ Format clean output
+      const recommended = products.map((p) => ({
+        productId: p.productID,
+        productName: p.name,
+      }));
+
+      res.json(recommended);
+    } catch (err) {
+      console.error("Error fetching recommended products:", err);
+      res.status(500).json({ message: "Server error fetching recommended products" });
+    }
+  }
+);
+
+
 // Orders
 app.post("/orders", verifyToken, verifyRole("admin"), async (req, res) => {
   const order = new Order(req.body);
