@@ -230,6 +230,36 @@ app.delete("/products/:productID", verifyToken, verifyRole("admin"), async (req,
   }
 });
 
+// ------------------- UPDATE PRODUCT -------------------
+app.put("/products/:productID", verifyToken, verifyRole("admin"), async (req, res) => {
+  try {
+    const productID = Number(req.params.productID);
+    if (Number.isNaN(productID)) {
+      return res.status(400).json({ message: "Invalid productID" });
+    }
+
+    const updatedProduct = await Product.findOneAndUpdate(
+      { productID: productID },
+      req.body,
+      { new: true }
+    );
+
+    if (!updatedProduct) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    res.json({
+      success: true,
+      message: "Product updated successfully",
+      updatedProduct,
+    });
+  } catch (err) {
+    console.error("Error updating product:", err);
+    res.status(500).json({ message: "Server error while updating product" });
+  }
+});
+
+
 
 
 // Customers
@@ -316,6 +346,38 @@ app.delete("/customers/:customerID", verifyToken, verifyRole("admin"), async (re
     res.status(500).json({ message: "Server error while deleting customer" });
   }
 });
+
+
+
+// ------------------- UPDATE CUSTOMER -------------------
+app.put("/customers/:customerID", verifyToken, verifyRole("admin"), async (req, res) => {
+  try {
+    const customerID = Number(req.params.customerID);
+    if (Number.isNaN(customerID)) {
+      return res.status(400).json({ message: "Invalid customerID" });
+    }
+
+    const updatedCustomer = await Customer.findOneAndUpdate(
+      { customerID: customerID },
+      req.body,
+      { new: true }
+    );
+
+    if (!updatedCustomer) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    res.json({
+      success: true,
+      message: "Customer updated successfully",
+      updatedCustomer,
+    });
+  } catch (err) {
+    console.error("Error updating customer:", err);
+    res.status(500).json({ message: "Server error while updating customer" });
+  }
+});
+
 
 
 // ------------------- Recommended Products API -------------------
