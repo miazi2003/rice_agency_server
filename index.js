@@ -478,6 +478,22 @@ app.post("/orders", verifyToken, verifyRole("admin"), async (req, res) => {
     res.status(500).send({ message: "Failed to add order" });
   }
 });
+// ---------------- GET LAST ORDER ----------------
+app.get("/orders/last", verifyToken, verifyRole("admin"), async (req, res) => {
+  try {
+    // Find the last order by orderID in descending order
+    const lastOrder = await Order.findOne().sort({ orderID: -1 });
+
+    if (!lastOrder) {
+      return res.send(null); // no orders yet
+    }
+
+    res.send(lastOrder);
+  } catch (err) {
+    console.error("Error fetching last order:", err);
+    res.status(500).send({ message: "Failed to get last order" });
+  }
+});
 
 
 app.get("/orders", verifyToken, verifyRole("admin"), async (req, res) => {
