@@ -428,50 +428,57 @@ app.get(
 // ---------------- ADD ORDER + STOCK DECREASE ----------------
 app.post("/orders", verifyToken, verifyRole("admin"), async (req, res) => {
   try {
-    const { customerID, products, orderDate, futureOrderDate } = req.body;
+    const { orderID, customerID, customerName, address, mobile, joinDate, products, orderDate, futureOrderDate } = req.body;
 
-    // 1️⃣ অর্ডারের প্রোডাক্টগুলো লুপ করে স্টক চেক
-    for (const item of products) {
-      const product = await Product.findOne({ productID: item.productId });
-
-      if (!product) {
-        return res.status(404).send({ message: `Product not found: ${item.productName}` });
-      }
-
-      // ❗ স্টক কম কিনা?
-      if (product.stock <= 0) {
-        return res.status(400).send({
-          message: `Stock unavailable for product: ${product.name}`,
-        });
-      }
-
-      // 2️⃣ স্টক ১ করে কমানো
-      product.stock -= 1;
-      await product.save();
+    if (!orderID) {
+      return res.status(400).send({ message: "orderID is required" });
     }
 
-    // 3️⃣ Order Save
-    const lastOrder = await Order.findOne().sort({ orderID: -1 });
-    const newOrderID = lastOrder ? lastOrder.orderID + 1 : 1;
+    if (!products || products.length === 0) {
+      return res.status(400).send({ message: "No products in order" });
+    }
 
+    // 1️⃣ Check stock for each product and decrement atomically
+    for (const item of products) {
+      const updatedProduct = await Product.findOneAndUpdate(
+        { productID: item.productId, stock: { $gt: 0 } },
+        { $inc: { stock: -1 } },
+        { new: true }
+      );
+
+      if (!updatedProduct) {
+        return res.status(400).send({
+          message: `Stock unavailable for product: ${item.productName}`,
+        });
+      }
+    }
+
+    // 2️⃣ Save the order
     const newOrder = new Order({
-      orderID: newOrderID,
-      ...req.body,
+      orderID,
+      customerID,
+      customerName,
+      address,
+      mobile,
+      joinDate,
+      products,
+      orderDate,
+      futureOrderDate: futureOrderDate || null,
     });
 
     const result = await newOrder.save();
 
     res.send({
       success: true,
-      message: "Order added & stock updated successfully",
+      message: `Order #${orderID} added & stock updated successfully`,
       result,
     });
-
   } catch (err) {
     console.error("Order Error:", err);
     res.status(500).send({ message: "Failed to add order" });
   }
 });
+
 
 app.get("/orders", verifyToken, verifyRole("admin"), async (req, res) => {
   const result = await Order.find();
