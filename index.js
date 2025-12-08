@@ -541,6 +541,51 @@ app.delete("/orders/:orderId", verifyToken, verifyRole("admin"), async (req, res
   }
 });
 
+// PUT update order by orderID
+app.put("/orders/:orderID", verifyToken, verifyRole("admin"), async (req, res) => {
+  try {
+    const { orderID } = req.params;
+    const updatedData = req.body; // customerID, products, futureOrderDate, etc.
+
+    const order = await Order.findOne({ orderID: parseInt(orderID) });
+    if (!order) return res.status(404).send({ message: "Order not found" });
+
+    // Optional: adjust stock if products changed (advanced)
+    order.products = updatedData.products || order.products;
+    order.futureOrderDate = updatedData.futureOrderDate || order.futureOrderDate;
+    // other fields if needed
+    await order.save();
+
+    res.send({ success: true, message: "Order updated successfully", order });
+  } catch (err) {
+    console.error("❌ Update order error:", err);
+    res.status(500).send({ message: "Failed to update order" });
+  }
+});
+// DELETE order by orderID
+app.delete("/orders/:orderID", verifyToken, verifyRole("admin"), async (req, res) => {
+  try {
+    const { orderID } = req.params;
+    const order = await Order.findOneAndDelete({ orderID: parseInt(orderID) });
+    if (!order) return res.status(404).send({ message: "Order not found" });
+
+    // Optional: Restore stock if you reduced it on order
+    for (const item of order.products) {
+      const product = await Product.findOne({ productID: item.productId });
+      if (product) {
+        product.stock += 1; // or item.quantity if you track qty
+        await product.save();
+      }
+    }
+
+    res.send({ success: true, message: "Order deleted successfully" });
+  } catch (err) {
+    console.error("❌ Delete order error:", err);
+    res.status(500).send({ message: "Failed to delete order" });
+  }
+});
+
+
 // Notifications
 app.get(
   "/notifications",
