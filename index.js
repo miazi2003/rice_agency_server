@@ -425,11 +425,54 @@ app.get(
 
 
 // Orders
+// ---------------- ADD ORDER + STOCK DECREASE ----------------
 app.post("/orders", verifyToken, verifyRole("admin"), async (req, res) => {
-  const order = new Order(req.body);
-  const result = await order.save();
-  res.send(result);
+  try {
+    const { customerID, products, orderDate, futureOrderDate } = req.body;
+
+    // 1️⃣ অর্ডারের প্রোডাক্টগুলো লুপ করে স্টক চেক
+    for (const item of products) {
+      const product = await Product.findOne({ productID: item.productId });
+
+      if (!product) {
+        return res.status(404).send({ message: `Product not found: ${item.productName}` });
+      }
+
+      // ❗ স্টক কম কিনা?
+      if (product.stock <= 0) {
+        return res.status(400).send({
+          message: `Stock unavailable for product: ${product.name}`,
+        });
+      }
+
+      // 2️⃣ স্টক ১ করে কমানো
+      product.stock -= 1;
+      await product.save();
+    }
+
+    // 3️⃣ Order Save
+    const lastOrder = await Order.findOne().sort({ orderID: -1 });
+    const newOrderID = lastOrder ? lastOrder.orderID + 1 : 1;
+
+    const newOrder = new Order({
+      orderID: newOrderID,
+      ...req.body,
+    });
+
+    const result = await newOrder.save();
+
+    res.send({
+      success: true,
+      message: "Order added & stock updated successfully",
+      result,
+    });
+
+  } catch (err) {
+    console.error("Order Error:", err);
+    res.status(500).send({ message: "Failed to add order" });
+  }
 });
+
 app.get("/orders", verifyToken, verifyRole("admin"), async (req, res) => {
   const result = await Order.find();
   res.send(result);
