@@ -454,17 +454,18 @@ app.post("/orders", verifyToken, verifyRole("admin"), async (req, res) => {
     }
 
     // 2️⃣ Save the order
-    const newOrder = new Order({
-      orderID,
-      customerID,
-      customerName,
-      address,
-      mobile,
-      joinDate,
-      products,
-      orderDate,
-      futureOrderDate: futureOrderDate || null,
-    });
+  const newOrder = new Order({
+  orderID,
+  customerID,
+  customerName,
+  address,
+  mobile,
+  joinDate,
+  products,
+  orderDate,
+  futureOrderDate: normalizeFutureDate(futureOrderDate) || null,
+});
+
 
     const result = await newOrder.save();
 
