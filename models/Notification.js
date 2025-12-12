@@ -5,14 +5,13 @@ const notificationSchema = new mongoose.Schema({
   customerName: { type: String },
   productName: { type: String },
   message: { type: String },
-  date: { type: String },
+  date: { type: String }, // Format YYYY-MM-DD
   createdAt: { type: Date, default: Date.now },
 }, { timestamps: true });
 
-// 🔥 Prevent duplicate notifications (customerID + date + productName)
 notificationSchema.index(
   { customerID: 1, date: 1, productName: 1 },
   { unique: true }
 );
 
-module.exports = mongoose.model('notifications', notificationSchema);
+module.exports = mongoose.model('Notification', notificationSchema);
